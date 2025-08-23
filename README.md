@@ -1,11 +1,8 @@
 
 <!-- archived-provider -->
->Please note: This Terraform provider is archived, per our [provider archiving process](https://terraform.io/docs/internals/archiving.html). What does this mean?
->1. The code repository and all commit history will still be available.
->1. Existing released binaries will remain available on the releases site.
->1. Issues and pull requests are not being monitored.
->1. New releases will not be published.
->
+Due to the original provider being archived, this is an updated provider for my needs.  If there is more desire for active
+development.  Please reach out.
+
 >If anyone from the community or an interested third party is willing to maintain it, they can fork the repository and [publish it](https://www.terraform.io/docs/registry/providers/publishing.html) to the Terraform Registry. If you are interested in maintaining this provider, please reach out to the [Terraform Provider Development Program](https://www.terraform.io/guides/terraform-provider-development-program.html) at *terraform-provider-dev@hashicorp.com*.
 
 
@@ -15,12 +12,12 @@
     <img src="https://cdn.rawgit.com/hashicorp/terraform-website/master/content/source/assets/images/logo-hashicorp.svg" alt="Terraform logo" align="right" height="50" />
 </a>
 
-![Status: Tech Preview](https://img.shields.io/badge/status-experimental-EAAA32) [![Releases](https://img.shields.io/github/release/hashicorp/terraform-provider-googleworkspace.svg)](https://github.com/hashicorp/terraform-provider-googleworkspace/releases)
-[![LICENSE](https://img.shields.io/github/license/hashicorp/terraform-provider-googleworkspace.svg)](https://github.com/hashicorp/terraform-provider-googleworkspace/blob/main/LICENSE)![Unit tests](https://github.com/hashicorp/terraform-provider-googleworkspace/workflows/Unit%20tests/badge.svg)
+![Status: Tech Preview](https://img.shields.io/badge/status-experimental-EAAA32) [![Releases](https://img.shields.io/github/release/HanseltimeIndustries/terraform-provider-googleworkspace.svg)](https://github.com/HanseltimeIndustries/terraform-provider-googleworkspace/releases)
+[![LICENSE](https://img.shields.io/github/license/HanseltimeIndustries/terraform-provider-googleworkspace.svg)](https://github.com/HanseltimeIndustries/terraform-provider-googleworkspace/blob/main/LICENSE)![Unit tests](https://github.com/HanseltimeIndustries/terraform-provider-googleworkspace/workflows/Unit%20tests/badge.svg)
 
 This Google Workspace provider for Terraform allows you to manage domains, users, and groups in your Google Workspace.
 
-This provider is a technical preview, which means it's a community supported project. It still requires extensive testing and polishing to mature into a HashiCorp officially supported project. Please [file issues](https://github.com/hashicorp/terraform-provider-googleworkspace/issues/new/choose) generously and detail your experience while using the provider. We welcome your feedback.
+This provider is a technical preview, which means it's a community supported project. It still requires extensive testing and polishing to mature into a HashiCorp officially supported project. Please [file issues](https://github.com/HanseltimeIndustries/terraform-provider-googleworkspace/issues/new/choose) generously and detail your experience while using the provider. We welcome your feedback.
 
 ## Experimental Status
 
@@ -28,12 +25,12 @@ By using the software in this repository (the "Software"), you acknowledge that:
 
 ## Maintainers
 
-This provider plugin is maintained by the Terraform team at [HashiCorp](https://www.hashicorp.com/)
+This provider plugin is maintained by hanseltime.
 
 ## Requirements
 
--	[Terraform](https://www.terraform.io/downloads.html) >= 0.13.x
--	[Go](https://golang.org/doc/install) >= 1.16
+-	[Terraform](https://www.terraform.io/downloads.html) >= 1.13.x
+-	[Go](https://golang.org/doc/install) >= 1.23.0
 
 ## Upgrading the provider
 
@@ -90,7 +87,7 @@ In order to run the full suite of Acceptance tests, run `make testacc`.
 $ make testacc
 ```
 
-For guidance on common development practices such as testing changes, see the [contribution guidelines](https://github.com/hashicorp/terraform-provider-googleworkspace/blob/main/.github/CONTRIBUTING.md).
+For guidance on common development practices such as testing changes, see the [contribution guidelines](https://github.com/HanseltimeIndustries/terraform-provider-googleworkspace/blob/main/.github/CONTRIBUTING.md).
 If you have other development questions we don't cover, please file an issue!
 
 ## Special Recognition
