@@ -14,6 +14,7 @@ import (
 	"golang.org/x/oauth2"
 	googleoauth "golang.org/x/oauth2/google"
 
+	"cloud.google.com/go/auth/credentials"
 	directory "google.golang.org/api/admin/directory/v1"
 	"google.golang.org/api/chromepolicy/v1"
 	"google.golang.org/api/gmail/v1"
@@ -74,14 +75,14 @@ func (c *apiClient) loadAndValidate(ctx context.Context) diag.Diagnostics {
 			creds := googleoauth.Credentials{
 				TokenSource: tokenSource,
 			}
-			diags = c.SetupClient(ctx, &creds)
+			diags = c.SetupClient(ctx, &creds, nil)
 			return diags
 		}
 
 		creds := googleoauth.Credentials{
 			TokenSource: oauth2.StaticTokenSource(token),
 		}
-		diags = c.SetupClient(ctx, &creds)
+		diags = c.SetupClient(ctx, &creds, nil)
 		return diags
 	}
 
@@ -101,7 +102,7 @@ func (c *apiClient) loadAndValidate(ctx context.Context) diag.Diagnostics {
 			return diag.FromErr(err)
 		}
 
-		diags = c.SetupClient(ctx, creds)
+		diags = c.SetupClient(ctx, creds, nil)
 	} else {
 		credParams := googleoauth.CredentialsParams{
 			Scopes:  c.ClientScopes,
@@ -113,19 +114,34 @@ func (c *apiClient) loadAndValidate(ctx context.Context) diag.Diagnostics {
 			return diag.FromErr(err)
 		}
 
-		diags = c.SetupClient(ctx, creds)
+		// Since we're in ADC territory, we detect if there is a quota project
+		adc_creds, err := credentials.DetectDefault(&credentials.DetectOptions{})
+		if err != nil {
+			log.Fatal(err)
+		}
+		qp, _ := adc_creds.QuotaProjectID(ctx)
+
+		diags = c.SetupClient(ctx, creds, &qp)
 	}
 
 	return diags
 }
 
-func (c *apiClient) SetupClient(ctx context.Context, creds *googleoauth.Credentials) diag.Diagnostics {
+func (c *apiClient) SetupClient(ctx context.Context, creds *googleoauth.Credentials, quotaProject *string) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	cleanCtx := context.WithValue(ctx, oauth2.HTTPClient, cleanhttp.DefaultClient())
 
+	// Add service options
+	opts := []option.ClientOption{
+		option.WithTokenSource(creds.TokenSource),
+	}
+	if quotaProject != nil && *quotaProject != "" {
+		opts = append(opts, option.WithQuotaProject(*quotaProject))
+	}
+
 	// 1. MTLS TRANSPORT/CLIENT - sets up proper auth headers
-	client, _, err := transport.NewHTTPClient(cleanCtx, option.WithTokenSource(creds.TokenSource))
+	client, _, err := transport.NewHTTPClient(cleanCtx, opts...)
 	if err != nil {
 		return diag.FromErr(err)
 	}
