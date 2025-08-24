@@ -94,7 +94,7 @@ jobs:
       env:
         GOOGLEWORKSPACE_CUSTOMER_ID: ${{ secrets.GOOGLEWORKSPACE_CUSTOMER_ID }}
         GOOGLEWORKSPACE_IMPERSONATED_USER_EMAIL: ${{ secrets.GOOGLEWORKSPACE_IMPERSONATED_USER_EMAIL }}
-
+        GOOGLEWORKSPACE_USE_DEFAULT_CREDENTIALS: "true"
       run: |
         go test ./internal/provider -v -sweep=us-central1 -sweep-run= -timeout 60m
 
@@ -123,6 +123,6 @@ jobs:
       env:
         GOOGLEWORKSPACE_CUSTOMER_ID: ${{ secrets.GOOGLEWORKSPACE_CUSTOMER_ID }}
         GOOGLEWORKSPACE_IMPERSONATED_USER_EMAIL: ${{ secrets.GOOGLEWORKSPACE_IMPERSONATED_USER_EMAIL }}
-
+        GOOGLEWORKSPACE_USE_DEFAULT_CREDENTIALS: true
       run: |
         go test ./internal/provider -v -sweep=us-central1 -sweep-run= -timeout 60m
