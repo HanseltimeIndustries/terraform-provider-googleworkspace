@@ -7,9 +7,9 @@ on:
 #  at a time. If this runs twice (on push, when it's already PR'ed) that's 8 secret keys.
 #  TODO (mbang): re-evaluate ttl on tokens
 
-#  pull_request:
-#    paths-ignore:
-#      - 'README.md'
+  pull_request:
+    paths-ignore:
+      - 'README.md'
   push:
     branches:
       - main
