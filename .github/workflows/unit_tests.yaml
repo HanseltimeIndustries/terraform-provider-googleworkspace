@@ -11,32 +11,33 @@ on:
       - '**.go'
 jobs:
   unit_tests:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@85e6279cec87321a52edac9c87bce653a07cf6c2 # v4.0.0
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Set up Go
-        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
-          go-version: '1.16'
+          go-version: '1.23'
         id: go
       - name: Go mod verify
         run: go mod verify
 
-      - name: Get credentials
-        id: vault
-        uses: hashicorp/vault-action@v3.3.0
+      - name: 'Google auth'
+        id: 'auth'
+        uses: 'google-github-actions/auth@v2'
         with:
-          url: ${{ secrets.VAULT_ADDR }}
-          method: approle
-          roleId: ${{ secrets.ROLE_ID }}
-          secretId: ${{ secrets.SECRET_ID }}
-          tlsSkipVerify: true
-          exportEnv: false
-          namespace: admin/tpgw
-          secrets: |
-                gcp/key/tf-acctest private_key_data
+          workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
+          service_account: '${{ secrets.GOOGLEWORKSPACE_IMPERSONATED_SERVICE_ACCOUNT }}'
+
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v1'
+        with:
+          project_id: '${{ secrets.GCP_PROJECT }}'
+
       - name: Run unit tests
         run:
-          export GOOGLEWORKSPACE_CREDENTIALS=$(echo -n ${{ steps.vault.outputs.private_key_data }} | base64 --decode)
           make test
