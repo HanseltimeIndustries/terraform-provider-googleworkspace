@@ -5,8 +5,11 @@ package googleworkspace
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -75,14 +78,14 @@ func (c *apiClient) loadAndValidate(ctx context.Context) diag.Diagnostics {
 			creds := googleoauth.Credentials{
 				TokenSource: tokenSource,
 			}
-			diags = c.SetupClient(ctx, &creds, nil)
+			diags = c.SetupClient(ctx, &creds)
 			return diags
 		}
 
 		creds := googleoauth.Credentials{
 			TokenSource: oauth2.StaticTokenSource(token),
 		}
-		diags = c.SetupClient(ctx, &creds, nil)
+		diags = c.SetupClient(ctx, &creds)
 		return diags
 	}
 
@@ -102,32 +105,22 @@ func (c *apiClient) loadAndValidate(ctx context.Context) diag.Diagnostics {
 			return diag.FromErr(err)
 		}
 
-		diags = c.SetupClient(ctx, creds, nil)
+		diags = c.SetupClient(ctx, creds)
 	} else {
-		credParams := googleoauth.CredentialsParams{
-			Scopes:  c.ClientScopes,
-			Subject: c.ImpersonatedUserEmail,
-		}
-
-		creds, err := googleoauth.FindDefaultCredentialsWithParams(ctx, credParams)
+		// This assumes we have ADC config
+		// Note - this doesn't honor the service account if explicitly set
+		creds, opts, err := c.getADCClientConfig(ctx)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 
-		// Since we're in ADC territory, we detect if there is a quota project
-		adc_creds, err := credentials.DetectDefault(&credentials.DetectOptions{})
-		if err != nil {
-			log.Fatal(err)
-		}
-		qp, _ := adc_creds.QuotaProjectID(ctx)
-
-		diags = c.SetupClient(ctx, creds, &qp)
+		diags = c.SetupClient(ctx, creds, opts...)
 	}
 
 	return diags
 }
 
-func (c *apiClient) SetupClient(ctx context.Context, creds *googleoauth.Credentials, quotaProject *string) diag.Diagnostics {
+func (c *apiClient) SetupClient(ctx context.Context, creds *googleoauth.Credentials, extraOptions ...option.ClientOption) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	cleanCtx := context.WithValue(ctx, oauth2.HTTPClient, cleanhttp.DefaultClient())
@@ -136,9 +129,7 @@ func (c *apiClient) SetupClient(ctx context.Context, creds *googleoauth.Credenti
 	opts := []option.ClientOption{
 		option.WithTokenSource(creds.TokenSource),
 	}
-	if quotaProject != nil && *quotaProject != "" {
-		opts = append(opts, option.WithQuotaProject(*quotaProject))
-	}
+	opts = append(opts, extraOptions...)
 
 	// 1. MTLS TRANSPORT/CLIENT - sets up proper auth headers
 	client, _, err := transport.NewHTTPClient(cleanCtx, opts...)
@@ -262,4 +253,119 @@ func (c *apiClient) NewGroupsSettingsService() (*groupssettings.Service, diag.Di
 	}
 
 	return groupsSettingsService, diags
+}
+
+func (c *apiClient) serviceAccountFromImpURL(u string) (string, error) {
+	const marker = "/serviceAccounts/"
+	i := strings.Index(u, marker)
+	if i < 0 {
+		return "", fmt.Errorf("no serviceAccounts/ in URL")
+	}
+	rest := u[i+len(marker):]
+	j := strings.Index(rest, ":")
+	if j < 0 {
+		return "", fmt.Errorf("no : in service account segment")
+	}
+	return rest[:j], nil
+}
+
+func (c *apiClient) getADCClientConfig(ctx context.Context) (*googleoauth.Credentials, []option.ClientOption, error) {
+	credParams := googleoauth.CredentialsParams{
+		Scopes:  c.ClientScopes,
+		Subject: c.ImpersonatedUserEmail,
+	}
+
+	creds, err := googleoauth.FindDefaultCredentialsWithParams(ctx, credParams)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Determine if we need to do more with the type of token we retrieved
+	var meta struct {
+		Type        string `json:"type"`
+		ClientEmail string `json:"client_email"`
+		ImpURL      string `json:"service_account_impersonation_url"`
+	}
+	err = json.Unmarshal(creds.JSON, &meta)
+	if err != nil {
+		return nil, nil, err
+	}
+	switch meta.Type {
+	case "authorized_user":
+		// Mileage will definitely vary - GCP does not like this method
+		// In this case, we return a quota project and the creds don't need to be used
+		adc_creds, err := credentials.DetectDefault(&credentials.DetectOptions{})
+		if err != nil {
+			return nil, nil, err
+		}
+		qp, err := adc_creds.QuotaProjectID(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+		return creds, []option.ClientOption{
+			option.WithQuotaProject(qp),
+		}, nil
+	case "service_account":
+		// If we're impersonating an email, then we need to create that impersonation
+		if c.ImpersonatedUserEmail != "" {
+			ts, err := impersonate.CredentialsTokenSource(ctx, impersonate.CredentialsConfig{
+				TargetPrincipal: meta.ClientEmail, // the SA email you set in the action
+				Scopes:          c.ClientScopes,
+				Subject:         c.ImpersonatedUserEmail, // Workspace user to act as
+			}, option.WithTokenSource(creds.TokenSource))
+			if err != nil {
+				return nil, nil, err
+			}
+
+			return &googleoauth.Credentials{TokenSource: ts}, nil, nil
+		}
+		return creds, nil, nil
+	case "impersonated_service_account":
+		// If we're impersonating an email, then we need to create that impersonation
+		if c.ImpersonatedUserEmail != "" {
+			svcAccount, err := c.serviceAccountFromImpURL(meta.ImpURL)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			fmt.Printf("Email is %s", svcAccount)
+			ts, err := impersonate.CredentialsTokenSource(ctx, impersonate.CredentialsConfig{
+				TargetPrincipal: svcAccount, // the SA email you set in the action
+				Scopes:          c.ClientScopes,
+				Subject:         c.ImpersonatedUserEmail, // Workspace user to act as
+			}, option.WithTokenSource(creds.TokenSource))
+			if err != nil {
+				return nil, nil, err
+			}
+
+			return &googleoauth.Credentials{TokenSource: ts}, nil, nil
+		}
+		return creds, nil, nil
+	case "external_account":
+		// External Providers - assumes Workload Identity Federation
+		if c.ImpersonatedUserEmail != "" {
+			if meta.ImpURL == "" {
+				return nil, nil, fmt.Errorf("not sure how to impersonate a user email via external_user adc with no service_account_impersonation_url")
+			}
+
+			svcAccount, err := c.serviceAccountFromImpURL(meta.ImpURL)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			ts, err := impersonate.CredentialsTokenSource(ctx, impersonate.CredentialsConfig{
+				TargetPrincipal: svcAccount,
+				Scopes:          c.ClientScopes,
+				Subject:         c.ImpersonatedUserEmail, // Workspace user to act as
+			}, option.WithTokenSource(creds.TokenSource))
+			if err != nil {
+				return nil, nil, err
+			}
+
+			return &googleoauth.Credentials{TokenSource: ts}, nil, nil
+		}
+		return creds, nil, nil
+	default:
+		return nil, nil, fmt.Errorf("unaccounted for credential type %s", meta.Type)
+	}
 }
