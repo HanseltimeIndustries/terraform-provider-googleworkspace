@@ -71,7 +71,7 @@ More information about scopes is below.
 
 #### Configuring scopes requested by the provider
 
-The provider can be configured with an `oauth_scopes` field containing a list of requested scopes. If `oauth_scopes` is _not_ set in the provider configuration, the provider will fall back to a default list of scopes, which are all the scopes needed to manage resources that can be provisioned by the provider ([see default scopes for v0.6.0 here](https://github.com/hashicorp/terraform-provider-googleworkspace/blob/v0.6.0/internal/provider/provider.go#L17-L30)). If default scopes are used, the service account needs to be granted all of those scopes in Google Workspace.
+The provider can be configured with an `oauth_scopes` field containing a list of requested scopes. If `oauth_scopes` is _not_ set in the provider configuration, the provider will fall back to a default list of scopes, which are all the scopes needed to manage resources that can be provisioned by the provider ([see default scopes for v0.6.0 here](https://github.com/HanseltimeIndustries/terraform-provider-googleworkspace/blob/v0.6.0/internal/provider/provider.go#L17-L30)). If default scopes are used, the service account needs to be granted all of those scopes in Google Workspace.
 
 The scopes declared in the provider's configuration need to match, or be a subset of, the scopes granted to the service account. If a provider is configured with scopes the service account isn't granted to use, the provider will receive a `401 Unauthorized` response when it requests an access token.
 
@@ -89,7 +89,7 @@ You do not need to set up domain-wide delegation if you are granting more specif
 
 To do this it's recommended that you create a custom admin role(s) with the Admin API privileges you need, as [pre-built administrator roles](https://support.google.com/a/answer/2405986) might not cover your use case.
 
-~> Some resources controlled via this provider can only be managed by a Super Admin, so user impersonation is necessary in those cases. For instance, [Admin Roles can only be managed via the console or API by a Super Admin](https://support.google.com/a/answer/2406043?hl=en). Also, access to some API endpoints may not be possible to grant as privileges in custom roles. 
+~> Some resources controlled via this provider can only be managed by a Super Admin, so user impersonation is necessary in those cases. For instance, [Admin Roles can only managed via the console or API by a Super Admin](https://support.google.com/a/answer/2406043?hl=en). Also, access to some API endpoints may not be possible to grant as privileges in custom roles. 
 
 When using gcloud locally, you can provide the required scopes for ADC login by adding the `--scopes` parameter to [`gcloud auth application-default login`](https://cloud.google.com/sdk/gcloud/reference/auth/application-default/login). For example, you can [provide additional scopes](https://cloud.google.com/sdk/gcloud/reference/beta/compute/instances/set-scopes) on Compute Engine. You can do this to configure access for both service accounts and end users.
 

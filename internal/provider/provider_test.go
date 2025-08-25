@@ -52,9 +52,9 @@ func getTestImpersonatedUserFromEnv() string {
 // googleworkspaceTestClient returns a common client
 func googleworkspaceTestClient() (*apiClient, error) {
 	creds := getTestCredsFromEnv()
-	if creds == "" {
-		return nil, fmt.Errorf("set credentials using any of these env variables %v", credsEnvVars)
-	}
+	// if creds == "" {
+	// 	return nil, fmt.Errorf("set credentials using any of these env variables %v", credsEnvVars)
+	// }
 
 	customerId := getTestCustomerFromEnv()
 	if customerId == "" {
